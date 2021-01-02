@@ -84,12 +84,12 @@
             :y="cell.y"
             :width="cell.size"
             :height="cell.size"
-            style="fill:orangered;fill-opacity:0.2"
+            style="fill:orangered;fill-opacity:0.1"
       ></rect>
 
       <defs>
         <marker id="arrowhead" markerWidth="6" markerHeight="6"
-                refX="6" refY="3" orient="auto">
+                refX="5" refY="3" orient="auto">
           <polygon points="0 0, 6 3, 0 6" fill="blue"/>
         </marker>
       </defs>
@@ -108,24 +108,33 @@
       ></line>
     </svg>
 
-    <svg id='patternView' v-if='showPattern'>
+    <svg id='patternView' v-if='showPattern && currentInteraction > 0'>
+      <rect v-for="(cell, index) in patterns.cells"
+            :key="'cell' + index"
+            :x="cell.x"
+            :y="cell.y"
+            :width="cell.size"
+            :height="cell.size"
+            style="fill:orangered;fill-opacity:0.1"
+      ></rect>
+
       <defs>
         <marker id="arrowheadPattern" markerWidth="8" markerHeight="8"
-                refX="8" refY="4" orient="auto">
+                refX="7" refY="4" orient="auto">
           <polygon points="0 0, 8 4, 0 8" fill="red"/>
         </marker>
       </defs>
 
       <line class="vector"
-            v-for="(pattern, index) in patterns"
+            v-for="(vector, index) in patterns.vectors"
             :key="'pattern' + index"
-            :x1="pattern.start.x"
-            :y1="pattern.start.y"
-            :x2="pattern.end.x"
-            :y2="pattern.end.y"
+            :x1="vector.start.x"
+            :y1="vector.start.y"
+            :x2="vector.end.x"
+            :y2="vector.end.y"
             stroke="red"
             stroke-width="4px"
-            :stroke-opacity="pattern.importance"
+            :stroke-opacity="vector.importance"
             marker-end="url(#arrowheadPattern)"
       ></line>
     </svg>
@@ -135,10 +144,16 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator';
 import {
-  gridManager,
+  createGridManager,
   Grid,
-  Interaction, Vector,
+  Interaction,
 } from '@/models/GridManager';
+import {
+  createPatternDatabase,
+} from '@/models/PatternDatabase';
+
+const database = createPatternDatabase();
+const gridManager = createGridManager(database);
 
 @Component
 export default class GridViewer extends Vue {
@@ -156,7 +171,7 @@ export default class GridViewer extends Vue {
 
   currentInteraction = 0;
 
-  patterns: Vector[] | undefined = undefined;
+  patterns: Patterns | undefined = undefined;
 
   // eslint-disable-next-line
   start() {
@@ -168,20 +183,20 @@ export default class GridViewer extends Vue {
     gridManager.stopMouseTracker();
     this.interactions = gridManager.getInteractions();
     this.currentInteraction = (this.interactions.length > 0) ? 1 : 0;
-    this.patterns = gridManager.findPatterns();
+    this.patterns = gridManager.getPatterns();
   }
 
   incIndex() {
     if (this.currentInteraction > 0) {
       const newIndex = this.currentInteraction + 1;
-      this.currentInteraction = (newIndex > this.interactions!.length) ? 1 : newIndex;
+      this.currentInteraction = (newIndex > this.interactions.length) ? 1 : newIndex;
     }
   }
 
   decIndex() {
     if (this.currentInteraction > 0) {
       const newIndex = this.currentInteraction - 1;
-      this.currentInteraction = (newIndex > 0) ? newIndex : this.interactions!.length;
+      this.currentInteraction = (newIndex > 0) ? newIndex : this.interactions.length;
     }
   }
 
