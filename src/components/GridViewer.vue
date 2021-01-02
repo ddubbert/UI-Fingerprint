@@ -150,6 +150,7 @@ import {
 } from '@/models/GridManager';
 import {
   createPatternDatabase,
+  Patterns,
 } from '@/models/PatternDatabase';
 
 const database = createPatternDatabase();
@@ -182,14 +183,18 @@ export default class GridViewer extends Vue {
   stop() {
     gridManager.stopMouseTracker();
     this.interactions = gridManager.getInteractions();
-    this.currentInteraction = (this.interactions.length > 0) ? 1 : 0;
+    this.currentInteraction = (this.interactions.length && this.interactions.length > 0)
+      ? this.interactions.length
+      : 0;
     this.patterns = gridManager.getPatterns();
   }
 
   incIndex() {
     if (this.currentInteraction > 0) {
       const newIndex = this.currentInteraction + 1;
-      this.currentInteraction = (newIndex > this.interactions.length) ? 1 : newIndex;
+      this.currentInteraction = (this.interactions && newIndex > this.interactions.length)
+        ? 1
+        : newIndex;
     }
   }
 
