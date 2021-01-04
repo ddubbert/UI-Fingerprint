@@ -86,8 +86,7 @@
       <label class="spinnerLabel">
         Amount consecutive <br>
         samples for important <br>
-        Cell (sampling rate <br>
-        10per second):
+        Cell (10 = 1 second)
       </label>
       <div class="spinnerContent left">
         <button class='button'
@@ -137,9 +136,9 @@
          style='top: 310px; left: 10px;'
     >
       <label class="spinnerLabel">
-        Pattern find factor <br>
+        Pattern find factor % <br>
         (has to appear in <br>
-        this * interactions cases):
+        this % of interactions):
       </label>
       <div class="spinnerContent left">
         <button class='button'
@@ -160,6 +159,13 @@
         </button>
       </div>
     </div>
+
+    <button class='button'
+            style='color: white; background-color: #42b983; top: 430px; left: 10px;'
+            @click='recalculate'
+    >
+      Recalculate
+    </button>
 
     <svg id='gridView' v-if='showGrid'>
       <line v-for="(column, index) in grid.columns"
@@ -283,7 +289,7 @@ export default class GridViewer extends Vue {
 
   samplingInterval = 1000 / 10;
 
-  minMatchingFactor = 0.5;
+  minMatchingFactor = 50;
 
   database = createPatternDatabase();
 
@@ -293,7 +299,7 @@ export default class GridViewer extends Vue {
     this.fanOutFactor,
     this.amountCellsPerRow,
     this.samplingInterval,
-    this.minMatchingFactor,
+    this.minMatchingFactor / 100,
   );
 
   grid: Grid = this.gridManager.calculateGrid();
@@ -323,7 +329,7 @@ export default class GridViewer extends Vue {
       this.fanOutFactor,
       this.amountCellsPerRow,
       this.samplingInterval,
-      this.minMatchingFactor,
+      this.minMatchingFactor / 100,
     ));
     this.grid = this.gridManager.calculateGrid();
     this.patterns = this.gridManager.getPatterns();
@@ -347,46 +353,34 @@ export default class GridViewer extends Vue {
 
   incCells() {
     this.amountCellsPerRow += 1;
-    this.recalculate();
   }
 
   decCells() {
-    const newAmount = this.amountCellsPerRow - 1;
-    this.amountCellsPerRow = (newAmount > 0) ? newAmount : 1;
-    this.recalculate();
+    this.amountCellsPerRow = Math.max(this.amountCellsPerRow - 1, 1);
   }
 
   incImportantCell() {
     this.minAmountPerCell += 1;
-    this.recalculate();
   }
 
   decImportantCell() {
-    const newAmount = this.minAmountPerCell - 1;
-    this.minAmountPerCell = (newAmount > 0) ? newAmount : 1;
-    this.recalculate();
+    this.minAmountPerCell = Math.max(this.minAmountPerCell - 1, 1);
   }
 
   incFOF() {
     this.fanOutFactor += 1;
-    this.recalculate();
   }
 
   decFOF() {
-    const newAmount = this.fanOutFactor - 1;
-    this.fanOutFactor = (newAmount > 0) ? newAmount : 1;
-    this.recalculate();
+    this.fanOutFactor = Math.max(this.fanOutFactor - 1, 1);
   }
 
   incPattern() {
-    this.minMatchingFactor += 0.01;
-    this.recalculate();
+    this.minMatchingFactor = Math.min(this.minMatchingFactor + 1, 100);
   }
 
   decPattern() {
-    const newAmount = this.minAmountPerCell - 0.01;
-    this.minAmountPerCell = (newAmount > 0) ? newAmount : 0.01;
-    this.recalculate();
+    this.minMatchingFactor = Math.max(this.minMatchingFactor - 1, 1);
   }
 
   created() {
