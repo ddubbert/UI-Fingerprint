@@ -1,42 +1,42 @@
 <template>
   <div id='gridBase'>
     <button class='button'
-            style='top: 10px; left: 0; background-color: #42b983; width: 100px'
+            style='top: 10px; left: 10px; background-color: #42b983; width: 100px'
             @click='showGrid = !showGrid'
     >
       Show Grid
     </button>
     <button class='button'
-            style='top: 10px; left: 110px; background-color: #42b983; width: 100px'
+            style='top: 10px; left: 120px; background-color: #42b983; width: 100px'
             @click='start'
     >
       Start Tracking
     </button>
     <button class='button'
-            style='top: 10px; left: 220px; background-color: #42b983; width: 100px'
+            style='top: 10px; left: 230px; background-color: #42b983; width: 100px'
             @click='stop'
     >
       Stop Tracking
     </button>
     <button class='button'
-            style='top: 10px; left: 330px; background-color: #42b983; width: 100px'
+            style='top: 10px; left: 340px; background-color: #42b983; width: 100px'
             @click='showImportantInteractions = !showImportantInteractions'
     >
       Show Important Cells
     </button>
     <button class='button'
-            style='top: 10px; left: 440px; background-color: #42b983; width: 100px'
+            style='top: 10px; left: 450px; background-color: #42b983; width: 100px'
             @click='showPattern = !showPattern'
     >
       Show Patterns
     </button>
 
-    <div id="numberSpinner"
+    <div class="numberSpinner"
          v-if="currentInteraction > 0"
-         style='top: 10px; left: 550px;'
+         style='top: 10px; left: 560px;'
     >
-      <label id="spinnerLabel">Current Interaction:</label>
-      <div id="spinnerContent">
+      <label class="spinnerLabel">Current Interaction:</label>
+      <div class="spinnerContent">
         <button class='button'
                 style='color: white; background-color: #42b983;'
                 @click='decIndex'
@@ -50,6 +50,111 @@
         <button class='button'
                 style='color: white; background-color: #42b983;'
                 @click='incIndex'
+        >
+          +
+        </button>
+      </div>
+    </div>
+
+    <div class="numberSpinner"
+         style='top: 70px; left: 10px;'
+    >
+      <label class="spinnerLabel">Amount of Columns:</label>
+      <div class="spinnerContent left">
+        <button class='button'
+                style='color: white; background-color: #42b983;'
+                @click='decCells'
+        >
+          -
+        </button>
+        <input
+          type="number"
+          :value="amountCellsPerRow"
+        >
+        <button class='button'
+                style='color: white; background-color: #42b983;'
+                @click='incCells'
+        >
+          +
+        </button>
+      </div>
+    </div>
+
+    <div class="numberSpinner"
+         style='top: 130px; left: 10px;'
+    >
+      <label class="spinnerLabel">
+        Amount consecutive <br>
+        samples for important <br>
+        Cell (sampling rate <br>
+        10per second):
+      </label>
+      <div class="spinnerContent left">
+        <button class='button'
+                style='color: white; background-color: #42b983;'
+                @click='decImportantCell'
+        >
+          -
+        </button>
+        <input
+          type="number"
+          :value="minAmountPerCell"
+        >
+        <button class='button'
+                style='color: white; background-color: #42b983;'
+                @click='incImportantCell'
+        >
+          +
+        </button>
+      </div>
+    </div>
+
+    <div class="numberSpinner"
+         style='top: 250px; left: 10px;'
+    >
+      <label class="spinnerLabel">Fan out factor:</label>
+      <div class="spinnerContent left">
+        <button class='button'
+                style='color: white; background-color: #42b983;'
+                @click='decFOF'
+        >
+          -
+        </button>
+        <input
+          type="number"
+          :value="fanOutFactor"
+        >
+        <button class='button'
+                style='color: white; background-color: #42b983;'
+                @click='incFOF'
+        >
+          +
+        </button>
+      </div>
+    </div>
+
+    <div class="numberSpinner"
+         style='top: 310px; left: 10px;'
+    >
+      <label class="spinnerLabel">
+        Pattern find factor <br>
+        (has to appear in <br>
+        this * interactions cases):
+      </label>
+      <div class="spinnerContent left">
+        <button class='button'
+                style='color: white; background-color: #42b983;'
+                @click='decPattern'
+        >
+          -
+        </button>
+        <input
+          type="number"
+          :value="minMatchingFactor"
+        >
+        <button class='button'
+                style='color: white; background-color: #42b983;'
+                @click='incPattern'
         >
           +
         </button>
@@ -84,7 +189,10 @@
             :y="cell.y"
             :width="cell.size"
             :height="cell.size"
-            style="fill:orangered;fill-opacity:0.1"
+            :style="{
+              fill: 'orangered',
+              'fill-opacity': 1/interactions[currentInteraction - 1].importantCells.length,
+            }"
       ></rect>
 
       <defs>
@@ -115,7 +223,7 @@
             :y="cell.y"
             :width="cell.size"
             :height="cell.size"
-            style="fill:orangered;fill-opacity:0.1"
+            :style="{ fill: 'orangered', 'fill-opacity': 1/patterns.cells.length }"
       ></rect>
 
       <defs>
@@ -126,7 +234,7 @@
       </defs>
 
       <line class="vector"
-            v-for="(vector, index) in patterns.vectors"
+            v-for="(vector, index) in patterns.vectorPairs"
             :key="'pattern' + index"
             :x1="vector.start.x"
             :y1="vector.start.y"
@@ -153,9 +261,6 @@ import {
   Patterns,
 } from '@/models/PatternDatabase';
 
-const database = createPatternDatabase();
-const gridManager = createGridManager(database);
-
 @Component
 export default class GridViewer extends Vue {
   @Prop() private msg!: string;
@@ -166,27 +271,62 @@ export default class GridViewer extends Vue {
 
   showPattern = false;
 
-  grid: Grid | undefined = undefined;
-
-  interactions: Interaction[] | undefined = undefined;
+  interactions: Interaction[] = [];
 
   currentInteraction = 0;
 
-  patterns: Patterns | undefined = undefined;
+  minAmountPerCell = 20;
+
+  fanOutFactor = 5;
+
+  amountCellsPerRow = 20;
+
+  samplingInterval = 1000 / 10;
+
+  minMatchingFactor = 0.5;
+
+  database = createPatternDatabase();
+
+  gridManager = createGridManager(
+    this.database,
+    this.minAmountPerCell,
+    this.fanOutFactor,
+    this.amountCellsPerRow,
+    this.samplingInterval,
+    this.minMatchingFactor,
+  );
+
+  grid: Grid = this.gridManager.calculateGrid();
+
+  patterns: Patterns = this.gridManager.getPatterns();
 
   // eslint-disable-next-line
   start() {
-    gridManager.startMouseTracker();
+    this.gridManager.startMouseTracker();
   }
 
   // eslint-disable-next-line
   stop() {
-    gridManager.stopMouseTracker();
-    this.interactions = gridManager.getInteractions();
+    this.gridManager.stopMouseTracker();
+    this.interactions.splice(0);
+    this.interactions.push(...this.gridManager.getInteractions());
     this.currentInteraction = (this.interactions.length && this.interactions.length > 0)
       ? this.interactions.length
       : 0;
-    this.patterns = gridManager.getPatterns();
+    this.patterns = this.gridManager.getPatterns();
+  }
+
+  recalculate() {
+    this.interactions.splice(0);
+    this.interactions.push(...this.gridManager.recalculateInteractionsWith(
+      this.minAmountPerCell,
+      this.fanOutFactor,
+      this.amountCellsPerRow,
+      this.samplingInterval,
+      this.minMatchingFactor,
+    ));
+    this.grid = this.gridManager.calculateGrid();
+    this.patterns = this.gridManager.getPatterns();
   }
 
   incIndex() {
@@ -205,14 +345,58 @@ export default class GridViewer extends Vue {
     }
   }
 
+  incCells() {
+    this.amountCellsPerRow += 1;
+    this.recalculate();
+  }
+
+  decCells() {
+    const newAmount = this.amountCellsPerRow - 1;
+    this.amountCellsPerRow = (newAmount > 0) ? newAmount : 1;
+    this.recalculate();
+  }
+
+  incImportantCell() {
+    this.minAmountPerCell += 1;
+    this.recalculate();
+  }
+
+  decImportantCell() {
+    const newAmount = this.minAmountPerCell - 1;
+    this.minAmountPerCell = (newAmount > 0) ? newAmount : 1;
+    this.recalculate();
+  }
+
+  incFOF() {
+    this.fanOutFactor += 1;
+    this.recalculate();
+  }
+
+  decFOF() {
+    const newAmount = this.fanOutFactor - 1;
+    this.fanOutFactor = (newAmount > 0) ? newAmount : 1;
+    this.recalculate();
+  }
+
+  incPattern() {
+    this.minMatchingFactor += 0.01;
+    this.recalculate();
+  }
+
+  decPattern() {
+    const newAmount = this.minAmountPerCell - 0.01;
+    this.minAmountPerCell = (newAmount > 0) ? newAmount : 0.01;
+    this.recalculate();
+  }
+
   created() {
     window.addEventListener('resize', this.handleResize);
     this.handleResize();
   }
 
   handleResize() {
-    gridManager.setWindowSize(window.innerWidth, window.innerHeight);
-    this.grid = gridManager.calculateGrid();
+    this.gridManager.setWindowSize(window.innerWidth, window.innerHeight);
+    this.grid = this.gridManager.calculateGrid();
   }
 }
 </script>
@@ -265,13 +449,17 @@ export default class GridViewer extends Vue {
   cursor: pointer;
 }
 
-#numberSpinner {
+.numberSpinner {
   position: absolute;
   z-index: 100;
 }
 
-#spinnerLabel, #spinnerContent {
+.spinnerLabel, .spinnerContent {
   display:block;
+}
+
+.spinnerContent.left {
+  float:left;
 }
 
 input[type='number']::-webkit-inner-spin-button,

@@ -1,18 +1,20 @@
-import { Cell, Vector } from '@/models/Interfaces';
+import { Cell, VectorPair } from '@/models/Interfaces';
+import hashCreator from '@/models/HashCreator';
 
 export interface Patterns {
-  vectors: Vector[];
+  vectorPairs: VectorPair[];
   cells: Cell[];
 }
 
-interface PatternHashMap {
-  [details: string]: { vector: Vector; amount: number };
+interface VectorPairHashMap {
+  [details: string]: { vectorPair: VectorPair; amount: number };
 }
 
 interface PageDetails {
-  vectorMap: PatternHashMap;
+  vectorPairMap: VectorPairHashMap;
   importantCells: Cell[];
   interactionCount: number;
+  minMatchingFactor: number;
 }
 
 interface CapturedPages {
@@ -20,12 +22,14 @@ interface CapturedPages {
 }
 
 export interface PatternDatabase {
-  createPage(): string;
-  addImportantVectorsAndCellsForPage(vectors: Vector[], cells: Cell[], pageId: string): void;
+  createPage(minMatchingFactor: number | undefined): string;
+  addImportantVectorPairsAndCellsForPage(
+    vectorPairs: VectorPair[],
+    cells: Cell[], pageId: string,
+  ): void;
   getPatternsForPage(pageId: string): Patterns;
+  resetPage(pageId: string, minMatchingFactor: number | undefined): void;
 }
-
-const MIN_MATCHING_FACTOR = 1 / 2;
 
 /**
  * @returns A PatternDatabase, that holds all captured important vectors and cells for a page.
@@ -36,48 +40,50 @@ export const createPatternDatabase = () => {
   let pageCount = 0;
   const capturedPages: CapturedPages = {};
 
-  /** Creates a hash for vectors to be recognizable in a Hash-Map */
-  function createHash(vector: Vector): string {
-    return `${vector.start.x}${vector.start.y}${vector.end.x}${vector.end.y}`;
-  }
-
   /**
    * Creates a Page.
    * @returns The pages id which is needed for all interactions (adding vectors, cells
    * or requesting patterns)
+   * @param minMatchingFactor: Minimal factor for a vector pair to be noticed as an important
+   * pattern (has to appear amountInteractions * minMatchingFactor times)
    */
-  function createPage(): string {
+  function createPage(minMatchingFactor = 1 / 2): string {
     const id = pageCount.toString();
     pageCount += 1;
     capturedPages[id] = {
-      vectorMap: {} as PatternHashMap,
+      vectorPairMap: {} as VectorPairHashMap,
       importantCells: [],
       interactionCount: 0,
+      minMatchingFactor,
     };
     return id;
   }
 
-  function addVector(vector: Vector, pageId: string) {
-    const hash = createHash(vector);
+  function addVector(vector: VectorPair, pageId: string) {
+    const hash = hashCreator.createHash(vector);
 
-    if (hash in capturedPages[pageId].vectorMap) {
-      capturedPages[pageId].vectorMap[hash].vector.importance = (capturedPages[pageId]
-        .vectorMap[hash].vector.importance + vector.importance) / 2;
-      capturedPages[pageId].vectorMap[hash].amount += 1;
-    } else capturedPages[pageId].vectorMap[hash] = { vector, amount: 1 };
+    if (hash in capturedPages[pageId].vectorPairMap) {
+      capturedPages[pageId].vectorPairMap[hash].vectorPair.importance = (capturedPages[pageId]
+        .vectorPairMap[hash].vectorPair.importance + vector.importance) / 2;
+      capturedPages[pageId].vectorPairMap[hash].amount += 1;
+    } else capturedPages[pageId].vectorPairMap[hash] = { vectorPair: vector, amount: 1 };
   }
 
   /**
-   * Add important vectors and cells of ONE interaction.
-   * @param vectors
+   * Add important vectorPairs and cells of ONE interaction.
+   * @param vectorPairs
    * @param cells
    * @param pageId
    */
-  function addImportantVectorsAndCellsForPage(vectors: Vector[], cells: Cell[], pageId: string) {
+  function addImportantVectorsAndCellsForPage(
+    vectorPairs: VectorPair[],
+    cells: Cell[],
+    pageId: string,
+  ) {
     if (!(pageId in capturedPages)) throw new Error('Page with pageId does not exist');
     capturedPages[pageId].interactionCount += 1;
     capturedPages[pageId].importantCells = [...capturedPages[pageId].importantCells, ...cells];
-    vectors.forEach((it) => { addVector(it, pageId); });
+    vectorPairs.forEach((it) => { addVector(it, pageId); });
   }
 
   /**
@@ -85,24 +91,41 @@ export const createPatternDatabase = () => {
    * @param pageId
    */
   function getPatternsForPage(pageId: string): Patterns {
-    const vectors = Object.keys(capturedPages[pageId].vectorMap)
+    const vectorPairs = Object.keys(capturedPages[pageId].vectorPairMap)
       .reduce((acc, key) => {
         const newAcc = [...acc];
-        if (capturedPages[pageId].vectorMap[key].amount
-          >= capturedPages[pageId].interactionCount * MIN_MATCHING_FACTOR) {
-          newAcc.push(capturedPages[pageId].vectorMap[key].vector);
+        if (capturedPages[pageId].vectorPairMap[key].amount
+          >= capturedPages[pageId].interactionCount * capturedPages[pageId].minMatchingFactor) {
+          newAcc.push(capturedPages[pageId].vectorPairMap[key].vectorPair);
         }
         return newAcc;
-      }, [] as Vector[]);
+      }, [] as VectorPair[]);
 
     const cells = capturedPages[pageId].importantCells;
 
-    return { vectors, cells };
+    return { vectorPairs, cells };
+  }
+
+  /**
+   * Resets data for ONE page and sets a new minMatchingFactor if provided
+   * @param pageId
+   * @param minMatchingFactor: Minimal factor for a vector pair to be noticed as an important
+   * pattern (has to appear amountInteractions * minMatchingFactor times)
+   */
+  function resetPage(pageId: string, minMatchingFactor: number | undefined) {
+    if (!(pageId in capturedPages)) throw new Error('Page with pageId does not exist');
+    capturedPages[pageId] = {
+      vectorPairMap: {} as VectorPairHashMap,
+      importantCells: [],
+      interactionCount: 0,
+      minMatchingFactor: minMatchingFactor || capturedPages[pageId].minMatchingFactor,
+    };
   }
 
   return {
     createPage,
-    addImportantVectorsAndCellsForPage,
+    addImportantVectorPairsAndCellsForPage: addImportantVectorsAndCellsForPage,
     getPatternsForPage,
+    resetPage,
   } as PatternDatabase;
 };
