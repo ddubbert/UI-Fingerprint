@@ -59,7 +59,8 @@ The matching process differs a bit from the Shazam algorithm. First of all, for 
 ### Options <a name="options"></a>
 There have been a few factors / options mentioned in this overall section, which have a great impact on the results. To allow for an extensive analysis of the data, these options can be altered in the overlay, to test their effect on found patterns.
 
-![options](./imagesDocumentation/options.png?raw=true "Options")
+<div style="text-align:center"><img src="./imagesDocumentation/options.png" alt="Options" width="200"/></div>
+
 
 Increasing the amount of cells reduces their size and therefore increases the precision of captured mouse movements, which in the end might reduce the amount of found patterns (and vise versa when reducing the amount).
 
