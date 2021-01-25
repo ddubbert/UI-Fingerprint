@@ -1,18 +1,17 @@
 # UI-Fingerprint Pattern Detection
 This project is a prototype of utilizing the fingerprint based recognition algorithm used in the Shazam-application to recognize patterns in user interactions on a website. The idea is to capture mouse movements / eytracking signals to determine, which parts of a website are visited most, how users browse the website and in which sequence they focus on different parts of this website. Depending on these information, a well-founded rework of the website could take place, in which elements might be rearanged or redesigned to allow for the desired view guidance. Other focal points might be getting to know, which information are most needed by users or which element designs they like most. To be able to do so, the algorithm described by Wang (Papers: "An industrial strength audio search algorithm, 2003" and "The Shazam music recognition service, 2006") was adopted and adjusted to this use case. The fingerprinting part based on combinatorial hashing was considered the most useful part for this project, which is why it was build around this procedure.
 
-The project has to be seen as a first POC that was a by-product of a paper I had to write for the course "Spezielle Gebiete der Mathematik" in the degree course "Medieninformatik Master" at TH-Köln, which involved describing the Shazam algorithm, possible improvements and other use cases (another prototype representing a simple shazam clone has been created as well, which can be found [here](https://github.com/ddubbert/Simple_Shazam_Clone)). In the following sections the prototype and its functionality will be explained, followed by implementation details, possible improvements of this prototype and an installation guide. Because the algorithm used by Shazam wont be described further, it is highly recommended to have a look at the previously mentioned papers, before using this software.
+The project has to be seen as a first POC that was a by-product of a paper I had to write for the course "Spezielle Gebiete der Mathematik" in the degree course "Medieninformatik Master" at TH-Köln, which involved describing the Shazam algorithm, possible improvements and other use cases (another prototype representing a simple shazam clone has been created as well, which can be found [here](https://github.com/ddubbert/Simple_Shazam_Clone)). In the following sections the prototype and its functionality will be explained, followed by implementation details, possible improvements of this prototype and an installation guide. Because the algorithm used by Shazam wont be described further, it is highly recommended to have a look at the previously mentioned papers, before using this software. Lastly, there has no research been done about Tools that are used for UI-Tests. Therefore I cant say if this is a new approach or an already existing one. It simply has been an idea that came to our mind (my team colleagues and me) when reading about the Shazam algorithm, which I wanted to test in practice.
 
 # Table of Contents
 * [Functionality](#functionality)
-	* [Track Movements](#track)
-	* [Record Sample](#record_sample)
-		* [Time Domain](#time_domain)
-		* [Spectrum](#spectrum)
-		* [Spectrogram](#spectrogram)
-		* [Constellation Map](#constellation)
-		* [Song Matching](#record_sample)
-	* [Sinusoids](#sinusoids)
+* [Implementation Details](#implementation)
+	* [Capturing Positions](#grid)
+	* [Reducing Noise and building Constellation Map](#constellation)
+	* [Combinatorial Hashing](#hashing)
+	* [Matching](#matching)
+	* [Options](#options)
+* [Improvements](#improvements)
 * [Project Setup](#project_setup)
 
 
@@ -42,52 +41,50 @@ As you can see, the same visual components are visible as in the overlay of sing
 This was the main idea that had to be tested. Overall the idea should now be clear. It is a really simple prototype, which can be enhanced quite a lot, but it should show, that the basic concept is working. There are a couple of options that can be adjusted, which will be explained in the next section. The next section will also explain the interrelationships to the Shazam algorithm, while explaining how this POC has been implemented / which ideas it is based on.
 
 
-### Database <a name="database"></a>
-On the "Database" page, a user can start to fill the database with songs, that are later used for recognizing recorded samples. On this page there are two options to choose from.
-![database page](./images/database.png?raw=true "Database Page")
-The first option is to upload new song files. The uploaded songs will be decoded by the prototype to generate fingerprints (robust hashes used for song recognition), that will be stored in a local object (used as a simple database). Depending on the length of a song and the processing power of the pc, this process might take multiple minutes (like 2 to 4 minutes for each song). Because decoded songs are only saved in a local object, all processed data will be lost on a page reload or server restart. That is why a .json file will be downloaded after all processing is done, which contains the processed data for a song (its name, length and all fingerprints / hashes). On a restart / reload, only these .json files need to be provided by using the second button, removing the need for processing a song again and again. These .json-files contain all information needed for song recognition and are uploaded in an instant (only milliseconds per song-file). If songs or their corresponding .json files were uploaded, this page will show a list of currently present songs, that can be recognized by the prototype. Remember that the name of uploaded files will be used as the song name. (Important files for this page are "src/views/RecordSong.vue" and "src/models/SongDatabase.ts")
-![song upload](./images/songs.png?raw=true "Song List")
+## Implementation Details <a name="implementation"></a>
+There are a couple of concepts underlying this POC. The main idea was to test parts of the Shazam algorithm in another context. Steps like building a constellation map, using peaks to remove noise and using a combinatorial hashing were the main parts used, as well as the hash / fingerprint matching.
 
-### Record Sample <a name="record_sample"></a>
-When songs have been uploaded, a song recognition can be done. The second page "Record Sample" provides all functionality needed to record a sample (corresponding files are "src/views/RecordSample.vue", "src/models/AudioProcessor.ts" and all components "src/compontents/*.vue").
-![sample page](./images/sample.png?raw=true "Sample Page")
-First of all a user is allowed to choose the microphone that will be used for recording a sample, by using the dropdown menu. Next he can start a recording of his surrounding sounds, by clicking on the "Start recording" button. A 3 second countdown will start, before the recording itself begins, to allow for last adjustments. The recording itself lasts for 15 seconds and cant be canceled once started. The button will show the remaining time while the recording is active. After 15 seconds, the decoding of the recorded sample will start. The decoding takes a couple of seconds, depending on the processing power available. The text below the button will show the current process / step. When processing is done, a list of up to three possible matches will be displayed, ranked by a matching score. For each song, the song name, its length, its maximum matching score and the time offset of the sample compared to the original song will be displayed.
-![found songs](./images/foundSongs.png?raw=true "Found Songs")
-<a name="time_domain"></a>
-Next all the steps used by the Shazam-Algorithm are visualy displayed. Drawing all of these will take some time, because a lot of data has to be visualized and only simple canvas implementations were used. Simply wait until all of the graphs are updated.
-The first canvas that is visible will display the time domain of the recorded sample. The x-axis is representing the time, the y-axis the power of the audio-signal at each corresponding point in time (drawn with "src/components/WaveChart.vue").
-![time domain](./images/timeDomain.png?raw=true "Time Domain")
-<a name="spectrum"></a>
-The next step / canvas presents the corresponding frequency domain / spectrum of the signal, showing all frequencies present in the recorded signal (x-axis), together with their magnitudes (y-axis). For calculating this spectrum, a FFT has been used (see function "calculateSpectrum" in the file "src/models/AudioProcessor.ts"). This step is not needed for the Shazam algorithm itself, but gives a nice impression of the overall sample (drawn with "src/components/FreqChart.vue").
-![spectrum](./images/spectrum.png?raw=true "Spectrum")
-<a name="spectrogram"></a>
-Important for the Shazam algorithm is the calculation of a spectrogram (see function "calculateSpectrogram" in "src/models/AudioProcessor.ts"), where the spectrum is calculated for short time slices with the help of an STFT. The x-axis of this graph is the time, the y-axis the frequency and a heatmap shows the power of each frequency at each timeslice. The darker the color, the stronger the power of a frequency at that time. Here, the y-axis is reduced to the maximum frequency, that had a magnitude above a threshhold, so that not all the empty space above it will be drawn (drawn with "src/components/Spectrogram.vue").
-![spectrogram](./images/spectrogram.png?raw=true "Spectrogram")
-<a name="constellation"></a>
-Next up, the algorithm calculates a constellation map, which contains those points of the spectrogram, that provide the highest power in a short area around it. Wang called these points the spectrogram peaks. In this prototype, these points also have to be above a threshhold, so that no unimportant points in otherwise empty spaces will be created (see function "getConstellationPoints" in "src/models/AudioProcessor.ts"). The resulting graph is called constellation map, because it reminded Wang of a star (constellation) map (drawn with "src/components/ConstellationMap.vue").
-![constellation map](./images/constellationMap.png?raw=true "Constellation Map")
-<a name="song_matching"></a>
-These constellation points are now used for a combinatorial hashing. For that, anchor points are selected and sequentially combined with points in a target zone behind it. The target zones size is determined by a fan out factor, which determins the number of points in such a zone. From these pairs hashes are created (fingerprints), containing the frequency of the anchor point, the frequency of the point from the target zone, and the time difference between these points. For every hash a hash-token object is generated, containing the hash itself and the time offset of the anchor point, which is needed for song matching (see function "calculateHashes" in "src/models/AudioProcessor.ts"). This step has no visualization and was therefore described in a little more detail.
+### Capturing Positions <a name="grid"></a>
+As mentioned in the previous section, a grid is used for calculating important mouse positions. The reasons for that is, that exact mouse positions are to precise to allow for exact matches. Elements on a webpage span multiple pixels and eyetracking systems, as well as mouse movements arent always as precise as a user wants them to be. All of these issues demand for a threshhold when using mouse positions. This POC demanded for a simple solution, because there simply wasnt enough time for a fully fledged solution. This is why the grid system was chosen, to introduce somewhat of a stable threshhold provider. In future expansions this should be rethought and improved, but for now, it is more than enough to show the basic concept in action.
 
-After creating the hashes, they are send to the database, which tries to determine the best match (in this prototype a local file is used as database "src/models/SongDatabase.ts", function "getSongFor"). To do so, firstly all the hashes are compared to the hashes in the database, which simply is a lookup in an hashtable. In this hashtable, the hashes of the songs are saved, together with the song name they belong to. The matches for every song are collected. For every match, a new offset pair is generated, containing the offset from the song hash and the offset of the matching sample hash. After collecting all the matches, the matching factor is calculated for each song. Calculating this factor can be thought of as a two step process, even though in reality only the second one is needed (and used). First of, a scatterplot is created for the matching offset pairs of each song. This is illustrated for the best matching song of a request (drawn with "src/components/OffsetScatterplot.vue").
-![offset scatterplot](./images/offsetScatterplot.png?raw=true "Offset Scatterplot")
-Each point represents a matching Hash between the sample and the current song. As you can see, there are quite a lot of matches. To determine, if it is a match, you need to look for points building a diagonal in this scatterplot. Here it is obviously around 100 seconds, which means that these are sequential points of the sample, that are also appearing in the original song in the same order and with the same timedifference between them, starting at around 100 seconds in the original. The amount of points in such a diagonal is used as the matching score of a song and the one with the highest score is chosen as match. Because these diagonals arent always as obvious as in this example and because this process needs to be automated, an additional approach to determine these diagonals is used. For each point of this scatterplot, the offset of the sample is subtracted from the original song offset, leaving the relative offset in between. These relative offsets are now used to create a histogram (drawn with "src/components/OffsetHistogram.vue").
-![offset histogram](./images/offsetHistogram.png?raw=true "Offset Histogram")
-If there is a high peak at one offset, it represents such a diagonal. The amount of this peak then is used as the total score of this song.
+### Reducing Noise and building Constellation Map <a name="constellation"></a>
+A problem has been, that users might do fast mouse or eye movements above cells, simply to reach others. In addition, unwanted mouse movements might be done or a result of physical problems (e.g. objects blocking the mouse, being bumped by another person or bad substrates / mouse pads). These unwanted and inbetween cells should not be used as points of importance, which is why they were regarded as noise. To remove the noise, like Shazam, peaks were determined when processing an interaction. As peak cells only those where chosen, a mouse rested in for at least 2 Seconds. Drawing only the peak cells is kinda like the constellation maps mentioned by Wang. The only difference is, that there is no need for an equal spreading of these points, because each of these points is important and having a user rest multiple times on the same cell has an important meaning. Because cells can be visited multiple times, the constellation map is also a heatmap, giving even more information and visual feedback (it kinda is a combination of a spectrogram and its reduced version of a constellation map).
 
-### Sinusoids <a name="sinusoids"></a>
-To demonstrate the way a DFT works, this page enables a user to create a signal from multiple waves with different frequencies. The sample rate and frequency can be chosen, as well as the type of the wave (sine or cosine) that will be added to the signal (see "src/views/SinusoidDrawer.vue").
-![create signal](./images/createWave.png?raw=true "Create Signal")
-The current combination of waves will be displayed in the time domain, which demonstrates how signals are joined. Following, a cosine wave with a frequency of 3Hz is drawn, and afterwards enhanced by a 10Hz sine wave.
-![cosine wave](./images/cos3Hz.png?raw=true "Cosine Wave")
-![sine wave addition](./images/addSine10hz.png?raw=true "Sine wave addition")
-The next canvas shows the spectrum / frequency domain of that signal. To calculate this spectrum, a DFT has been implemented (see "src/models/DFT.ts").
-![spectrum dft](./images/spectrumDFT.png?raw=true "Spectrum DFT")
-Lastly, a user can recreate the DFT manually, by drawing the signal around a circle with different circle frequencies. This is meant to enhance the understanding of the DFT itself (drawn with "src/components/Fourier.vue"). In the following images, three different frequencies are tested: 1Hz, 3Hz and 10Hz. 3Hz and 10Hz are present in the signal, which is shown by a shift of the mass center (circle in the center of the plot).
-![test frequency 1hz](./images/test1Hz.png?raw=true "Test Frequency 1Hz")
-![test frequency 3hz](./images/test3Hz.png?raw=true "Test Frequency 3Hz")
-![test frequency 10hz](./images/test10Hz.png?raw=true "Test Frequency 10Hz")
-If the center of mass is shifted horizontally, it represents the frequency of a cosine wave. If it shifts vertically, it represents a sine wave. If a frequency is found within a cosine and sine part, the shift would be on both axis.
+### Combinatorial Hashing <a name="hashing"></a>
+Just like Shazam, this POC is based on fingerprints as a main concept. After generating the heatmap / constellation map, the points are used for a combinatorial hashing, in which each point will be used as an anchor point. Instead of target zones, each anchor point will be combined with a fixed number of time depending sequentiell points (based on a Fan Out Factor). Combining these points results in a hash, as well as an importance factor (defined by the directness of a combination / the amount of important cells that are in between the two combined cells). You could say, there are target zones on a one dimensional array of captured cells, which all are sequentially connected to a fixed number of successors. The generated hashes and their corresponding importance factors are then send to the database, where they are stored inside of an hashmap.
+
+### Matching <a name="matching"></a>
+The matching process differs a bit from the Shazam algorithm. First of all, for each hash in the hashmap, the importance factors are collected across the interactions of all users. There is also a count of how often this hash has appeared. In addition, the database contains a counter for the absolute amount of interactions / user tests. When a client requests all currently important patterns found across all interactions, the database goes through all saved hashes and collects those, that appear in at least a predefined amount of interactions. This amount is determined by a percentage of the absolute amount (the Min_Matching_Factor). These hashes are regarded as patterns and are send to the client, formatted as vector-objects. In addition, the database keeps track of all cells visited by users and computes their importance in regard to their appearance factor (a histogram might be used for that in the future). So overall, the database request for patterns differs quite a lot from the matching used in Shazam, even though both are based on the hashmap. In contrast to the Shazam algorithm, instead of exactly matching one object, the similarities of multiple objects are wanted and much more interesting.
+
+### Options <a name="options"></a>
+There have been a few factors / options mentioned in this overall section, which have a great impact on the results. To allow for an extensive analysis of the data, these options can be altered in the overlay, to test their effect on found patterns.
+
+![options](./imagesDocumentation/options.png?raw=true "Options")
+
+Increasing the amount of cells reduces their size and therefore increases the precision of captured mouse movements, which in the end might reduce the amount of found patterns (and vise versa when reducing the amount).
+
+![cell amount](./imagesDocumentation/interactions/settings/cellAmount.png?raw=true "Cell Amount Increased")
+
+Reducing the time needed to recognize an important cell might increase their amount and therefore the amount of important vectors and patterns. But it also allows for more noise to be left.
+
+![time amount](./imagesDocumentation/interactions/settings/timeAmount.png?raw=true "Time Amount Reduced")
+
+Reducing the Fan Out Factor / the amount of connections per anchor point, reduces the possibility of finding important indirect movements. This might be used, if only direct connections between different elements are the subject of research.
+
+![fof amount](./imagesDocumentation/interactions/settings/fofAmount.png?raw=true "Fan Out Factor Reduced")
+
+Lastly, reducing the minimum matching factor increases the possibility of a vector to be recognized as important pattern. A negative result might be, that to many vectors will be seen as important, so that no clear distinction or improvement of a page might be visible / a user will be overwhelmed by their sheer amount.
+
+![matching amount](./imagesDocumentation/interactions/settings/percentageAmount.png?raw=true "Matching Amount Reduced")
+
+## Improvements <a name="improvements"></a>
+mouse wenig aussagekräftig da augen woanders sein können
+
+abgesehen von bewegung keine interaktionen
+
+wechsel zwischen seiten
+
+präzision könnte ungenügend sein, ggf mehrere zellen einbeziehen wenn maus am rand einer zelle
 
 ## Project setup <a name="project_setup"></a>
 ```
