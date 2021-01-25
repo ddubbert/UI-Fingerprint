@@ -1,30 +1,30 @@
 <template>
   <div id='gridBase'>
-    <button class='button'
+    <button class='button top'
             style='top: 10px; left: 10px; background-color: #42b983; width: 100px'
             @click='showGrid = !showGrid'
     >
       Show Grid
     </button>
-    <button class='button'
+    <button class='button top'
             style='top: 10px; left: 120px; background-color: #42b983; width: 100px'
             @click='start'
     >
       Start Tracking
     </button>
-    <button class='button'
+    <button class='button top'
             style='top: 10px; left: 230px; background-color: #42b983; width: 100px'
             @click='stop'
     >
       Stop Tracking
     </button>
-    <button class='button'
+    <button class='button top'
             style='top: 10px; left: 340px; background-color: #42b983; width: 100px'
             @click='showImportantInteractions = !showImportantInteractions'
     >
       Show Important Cells
     </button>
-    <button class='button'
+    <button class='button top'
             style='top: 10px; left: 450px; background-color: #42b983; width: 100px'
             @click='showPattern = !showPattern'
     >
@@ -57,7 +57,7 @@
     </div>
 
     <div class="numberSpinner"
-         style='top: 70px; left: 10px;'
+         style='top: 80px; left: 10px;'
     >
       <label class="spinnerLabel">Amount of Columns:</label>
       <div class="spinnerContent left">
@@ -81,7 +81,7 @@
     </div>
 
     <div class="numberSpinner"
-         style='top: 130px; left: 10px;'
+         style='top: 140px; left: 10px;'
     >
       <label class="spinnerLabel">
         Amount consecutive <br>
@@ -109,7 +109,7 @@
     </div>
 
     <div class="numberSpinner"
-         style='top: 250px; left: 10px;'
+         style='top: 260px; left: 10px;'
     >
       <label class="spinnerLabel">Fan out factor:</label>
       <div class="spinnerContent left">
@@ -133,7 +133,7 @@
     </div>
 
     <div class="numberSpinner"
-         style='top: 310px; left: 10px;'
+         style='top: 320px; left: 10px;'
     >
       <label class="spinnerLabel">
         Pattern find factor % <br>
@@ -160,8 +160,8 @@
       </div>
     </div>
 
-    <button class='button'
-            style='color: white; background-color: #42b983; top: 430px; left: 10px;'
+    <button class='button  top'
+            style='color: white; background-color: #42b983; top: 440px; left: 10px;'
             @click='recalculate'
     >
       Recalculate
@@ -441,6 +441,12 @@ export default class GridViewer extends Vue {
   z-index: 100;
   pointer-events: all;
   cursor: pointer;
+  color: white;
+  font-weight: bold;
+}
+
+.button.top {
+  height: 60px;
 }
 
 .numberSpinner {
