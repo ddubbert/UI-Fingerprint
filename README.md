@@ -93,6 +93,8 @@ These are only some of the possible improvements and adjustments needed for a re
 
 
 ## Project setup <a name="project_setup"></a>
+First of all, this project has only been optimized for and tested with Firefox and Chrome. If you want to try it, use one of these browsers.
+
 ```
 npm install
 ```
