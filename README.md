@@ -75,7 +75,7 @@ Reducing the time needed to recognize an important cell might increase their amo
 
 Reducing the Fan Out Factor / the amount of connections per anchor point, reduces the possibility of finding important indirect movements. This might be used, if only direct connections between different elements are the subject of research.
 
-![for amount](./imagesDocumentation/interactions/settings/fofAmount.png?raw=true "Fan Out Factor Reduced")
+![fan out factor amount](./imagesDocumentation/interactions/settings/fofAmount.png?raw=true "Fan Out Factor Reduced")
 
 Lastly, reducing the minimum matching factor increases the possibility of a vector to be recognized as important pattern. A negative result might be, that to many vectors will be seen as important, so that no clear distinction or improvement of a page might be visible / a user will be overwhelmed by their sheer amount.
 
